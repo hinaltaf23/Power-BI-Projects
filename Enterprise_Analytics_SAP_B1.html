@@ -1,0 +1,1033 @@
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Enterprise Analytics — SAP B1</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#ffffff;--bg2:#f5f4f0;--bg3:#eceae4;
+  --text:#1a1a18;--text2:#6b6a64;--text3:#9c9a92;
+  --border:#e0ded8;--border2:#c8c6be;
+  --blue:#378ADD;--teal:#1D9E75;--coral:#D85A30;--amber:#BA7517;
+  --purple:#7F77DD;--green:#639922;--gray:#888780;--red:#E24B4A;
+  --radius:8px;--radius-lg:12px;
+}
+body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;color:var(--text);background:#f0ede6;line-height:1.5;min-height:100vh}
+.app{max-width:1280px;margin:0 auto;padding:16px}
+/* header */
+.header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:12px 18px;margin-bottom:12px}
+.header-left h1{font-size:15px;font-weight:600}
+.header-left p{font-size:11px;color:var(--text2);margin-top:2px}
+.header-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.refresh-btn{display:flex;align-items:center;gap:6px;padding:7px 16px;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg2);color:var(--text);cursor:pointer;font-size:12px;font-weight:500;transition:all .2s}
+.refresh-btn:hover{background:var(--bg3)}
+.refresh-btn:disabled{opacity:.6;cursor:not-allowed}
+.refresh-btn svg{transition:transform .1s}
+.refresh-btn.spinning svg{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.status{text-align:right}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600}
+.badge-live{background:#dcf3ea;color:#0f6e56}
+.badge-refresh{background:#faeeda;color:#854f0b}
+.status p{font-size:11px;color:var(--text2);margin-top:3px}
+/* nav tabs */
+.nav{display:flex;gap:6px;margin-bottom:12px;border-bottom:0.5px solid var(--border);padding-bottom:8px;background:transparent;flex-wrap:wrap}
+.nav button{padding:7px 16px;border-radius:var(--radius);border:0.5px solid transparent;cursor:pointer;font-size:12px;font-weight:400;background:transparent;color:var(--text2);transition:all .15s}
+.nav button:hover{background:var(--bg2);color:var(--text)}
+.nav button.active{background:var(--bg2);border-color:var(--border2);color:var(--text);font-weight:500}
+/* slicer bar */
+.slicer{display:flex;flex-wrap:wrap;align-items:center;gap:12px;background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:10px 14px;margin-bottom:14px}
+.slicer-label{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.05em}
+.slicer-sep{width:0.5px;height:22px;background:var(--border)}
+.slicer-group{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.pill{padding:4px 10px;border-radius:6px;border:0.5px solid var(--border2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--text2);transition:all .15s}
+.pill:hover{background:var(--bg3)}
+select{font-size:11px;padding:4px 8px;border-radius:6px;border:0.5px solid var(--border2);background:var(--bg);color:var(--text);cursor:pointer}
+/* kpi grid */
+.kpi-grid{display:grid;gap:8px;margin-bottom:12px}
+.kpi-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);padding:10px 14px;min-width:0}
+.kpi-card .lbl{font-size:10px;color:var(--text2);margin-bottom:3px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi-card .val{font-size:21px;font-weight:600;line-height:1.1}
+.kpi-card .sub{font-size:10px;color:var(--text3);margin-top:2px}
+/* chart cards */
+.chart-grid{display:grid;gap:10px;margin-bottom:10px}
+.chart-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:14px;min-width:0}
+.chart-card h4{font-size:11px;font-weight:500;color:var(--text2);margin-bottom:10px}
+/* FIX: chart container needs explicit height + position:relative so Chart.js
+   (maintainAspectRatio:false) can size correctly. IMPORTANT: this must be a
+   real fixed height, NOT flex:1 - flex-basis:0 on a flex child gets ignored
+   by CSS Grid's auto row-height calculation, so rows containing only charts
+   (no table to "anchor" height) were collapsing to near-zero height. */
+.chart-box{position:relative;width:100%;height:220px}
+.chart-box canvas{position:absolute;top:0;left:0;width:100% !important;height:100% !important}
+/* tables */
+.tbl-wrap{overflow-x:auto;max-height:200px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+thead th{padding:5px 8px;text-align:left;font-weight:500;color:var(--text2);border-bottom:0.5px solid var(--border);background:var(--bg);position:sticky;top:0}
+tbody td{padding:5px 8px;border-bottom:0.5px solid var(--border);color:var(--text2)}
+.tag{display:inline-block;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:500}
+.bar-cell{display:flex;align-items:center;gap:6px}
+.bar-bg{width:56px;height:6px;border-radius:3px;background:var(--bg3);overflow:hidden;flex-shrink:0}
+.bar-fill{height:100%;border-radius:3px}
+/* gauge */
+.gauge-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;height:190px}
+/* journey matrix */
+.matrix td,.matrix th{text-align:center}
+.matrix td:first-child,.matrix th:first-child{text-align:left}
+.mx-cell{border-radius:4px;padding:3px 8px;font-size:11px;font-weight:500;display:inline-block;min-width:32px}
+/* sections */
+.page{display:none}.page.active{display:block}
+/* download btn */
+.dl-btn{display:flex;align-items:center;gap:6px;padding:7px 16px;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--blue);color:#fff;cursor:pointer;font-size:12px;font-weight:500;text-decoration:none}
+.dl-btn:hover{opacity:.9}
+
+/* ───── FIX: responsive breakpoints — none existed before, so fixed
+   6/5/4-column grids and 2fr/1fr chart grids got crushed on narrow
+   screens, making labels and charts illegible ───── */
+@media (max-width:900px){
+  .kpi-grid{grid-template-columns:repeat(3,1fr) !important}
+  .chart-grid{grid-template-columns:1fr !important}
+}
+@media (max-width:560px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr) !important}
+  .header{flex-direction:column;align-items:stretch}
+  .header-right{justify-content:space-between}
+  .nav{overflow-x:auto;flex-wrap:nowrap}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <h1>Enterprise Analytics — SAP B1 + Power BI</h1>
+    <p>FY 2024 · All figures in USD · Date &amp; filters apply across all visuals</p>
+  </div>
+  <div class="header-right">
+    <button class="refresh-btn" id="refreshBtn" onclick="doRefresh()">
+      <svg id="refreshIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path>
+      </svg>
+      <span id="refreshLabel">Refresh Data</span>
+    </button>
+    <div class="status">
+      <span class="badge badge-live" id="statusBadge">● LIVE</span>
+      <p id="lastRefresh">Last refresh: 01:33 pm</p>
+    </div>
+    <a class="dl-btn" id="dlBtn" href="#" onclick="downloadHTML(event)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      Download HTML
+    </a>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <button class="" onclick="showPage('exec',this)">📊 Executive Overview</button>
+  <button onclick="showPage('loyalty',this)" class="">⭐ Loyalty Analytics</button>
+  <button onclick="showPage('omni',this)" class="">🔁 Omnichannel</button>
+  <button onclick="showPage('brand',this)" class="active">📦 Brand &amp; SKU</button>
+</div>
+
+<!-- ══ PAGE 1: EXECUTIVE ══ -->
+<div class="page" id="page-exec">
+  <div class="slicer" id="slicer-exec">
+    <div class="slicer-group"><span class="slicer-label">DATE</span>
+      <select onchange="setDate(0,this.value)"><option value="0" selected="">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option></select>
+      <span style="font-size:11px;color:var(--text3)">–</span>
+      <select onchange="setDate(1,this.value)"><option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11" selected="">Dec</option></select>
+    </div>
+    <div class="slicer-sep"></div>
+    <div class="slicer-group"><span class="slicer-label">CHANNEL</span><button class="pill" id="slicer-exec-ch-POS" style="background:#378ADD;color:#fff;border-color:#378ADD
+    " onclick="toggleFilter('channels','POS','slicer-exec')">POS</button><button class="pill" id="slicer-exec-ch-WEB" style="background:#1D9E75;color:#fff;border-color:#1D9E75
+    " onclick="toggleFilter('channels','WEB','slicer-exec')">WEB</button><button class="pill" id="slicer-exec-ch-APP" style="background:#7F77DD;color:#fff;border-color:#7F77DD
+    " onclick="toggleFilter('channels','APP','slicer-exec')">APP</button></div>
+    <div class="slicer-sep"></div>
+    <div class="slicer-group"><span class="slicer-label">TIER</span><button class="pill" id="slicer-exec-ti-Bronze" style="background:#BA7517;color:#fff;border-color:#BA7517
+    " onclick="toggleFilter('tiers','Bronze','slicer-exec')">Bronze</button><button class="pill" id="slicer-exec-ti-Silver" style="background:#888780;color:#fff;border-color:#888780
+    " onclick="toggleFilter('tiers','Silver','slicer-exec')">Silver</button><button class="pill" id="slicer-exec-ti-Gold" style="background:#639922;color:#fff;border-color:#639922
+    " onclick="toggleFilter('tiers','Gold','slicer-exec')">Gold</button><button class="pill" id="slicer-exec-ti-VIP" style="background:#7F77DD;color:#fff;border-color:#7F77DD
+    " onclick="toggleFilter('tiers','VIP','slicer-exec')">VIP</button></div>
+    </div>
+  <div class="kpi-grid" id="kpi-exec" style="grid-template-columns:repeat(6,1fr)"><div class="kpi-card">
+    <div class="lbl">Total Revenue</div>
+    <div class="val" style="color:var(--text)">$12.3M</div>
+    <div class="sub">FY 2024</div>
+  </div><div class="kpi-card">
+    <div class="lbl">Total Orders</div>
+    <div class="val" style="color:var(--text)">997</div>
+    <div class="sub">Omnichannel</div>
+  </div><div class="kpi-card">
+    <div class="lbl">Active Customers</div>
+    <div class="val" style="color:var(--text)">60</div>
+    <div class="sub">Filtered</div>
+  </div><div class="kpi-card">
+    <div class="lbl">Avg CLV 3Y</div>
+    <div class="val" style="color:#7F77DD">$79K</div>
+    <div class="sub">Customer lifetime</div>
+  </div><div class="kpi-card">
+    <div class="lbl">Churn High Risk</div>
+    <div class="val" style="color:#E24B4A">44</div>
+    <div class="sub">Need attention</div>
+  </div><div class="kpi-card">
+    <div class="lbl">Avg GMROI</div>
+    <div class="val" style="color:#639922">2.2×</div>
+    <div class="sub">Gross margin ROI</div>
+  </div></div>
+  <div class="chart-grid" style="grid-template-columns:2fr 1fr">
+    <div class="chart-card"><h4>Revenue trend — monthly</h4><div class="chart-box"><canvas id="c-revTrend" width="795" height="220" style="display: block; box-sizing: border-box; height: 220px; width: 795px;"></canvas></div></div>
+    <div class="chart-card"><h4>Channel performance</h4><div class="chart-box"><canvas id="c-chanPerf" width="382" height="220" style="display: block; box-sizing: border-box; height: 220px; width: 382px;"></canvas></div></div>
+  </div>
+  <div class="chart-grid" style="grid-template-columns:1fr 2fr">
+    <div class="chart-card"><h4>Avg CLV by loyalty tier</h4><div class="chart-box"><canvas id="c-clvTier" width="382" height="220" style="display: block; box-sizing: border-box; height: 220px; width: 382px;"></canvas></div></div>
+    <div class="chart-card"><h4>Churn watch — high-risk customers</h4>
+      <div class="tbl-wrap"><table id="t-churn">
+        <thead><tr><th>Customer</th><th>Tier</th><th>Days Inactive</th><th>Churn Score</th><th>Revenue</th><th>Risk</th></tr></thead>
+        <tbody><tr>
+      <td>Piotr Nowak</td><td><span class="tag" style="background:#88878033;color:#888780">Silver</span></td><td>395d</td>
+      <td><div class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:99%;background:#E24B4A"></div></div><span>99</span></div></td>
+      <td>$55K</td><td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Very High</span></td>
+    </tr><tr>
+      <td>Svetlana Ivanova</td><td><span class="tag" style="background:#63992233;color:#639922">Gold</span></td><td>390d</td>
+      <td><div class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:98%;background:#E24B4A"></div></div><span>98</span></div></td>
+      <td>$145K</td><td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Very High</span></td>
+    </tr><tr>
+      <td>James Osei</td><td><span class="tag" style="background:#88878033;color:#888780">Silver</span></td><td>383d</td>
+      <td><div class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:96%;background:#E24B4A"></div></div><span>96</span></div></td>
+      <td>$130K</td><td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Very High</span></td>
+    </tr><tr>
+      <td>Ana Costa</td><td><span class="tag" style="background:#7F77DD33;color:#7F77DD">VIP</span></td><td>371d</td>
+      <td><div class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:93%;background:#E24B4A"></div></div><span>93</span></div></td>
+      <td>$127K</td><td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Very High</span></td>
+    </tr><tr>
+      <td>Soo-Jin Park</td><td><span class="tag" style="background:#63992233;color:#639922">Gold</span></td><td>360d</td>
+      <td><div class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:90%;background:#E24B4A"></div></div><span>90</span></div></td>
+      <td>$96K</td><td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Very High</span></td>
+    </tr><tr>
+      <td>Omar Farouk</td><td><span class="tag" style="background:#63992233;color:#639922">Gold</span></td><td>350d</td>
+      <td><div class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:88%;background:#E24B4A"></div></div><span>88</span></div></td>
+      <td>$60K</td><td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Very High</span></td>
+    </tr><tr>
+      <td>Chloe Dubois</td><td><span class="tag" style="background:#88878033;color:#888780">Silver</span></td><td>344d</td>
+      <td><div class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:86%;background:#E24B4A"></div></div><span>86</span></div></td>
+      <td>$17K</td><td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Very High</span></td>
+    </tr><tr>
+      <td>Sara Perez</td><td><span class="tag" style="background:#BA751733;color:#BA7517">Bronze</span></td><td>330d</td>
+      <td><div class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:83%;background:#E24B4A"></div></div><span>83</span></div></td>
+      <td>$88K</td><td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Very High</span></td>
+    </tr></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAGE 2: LOYALTY ══ -->
+<div class="page" id="page-loyalty">
+  <div class="slicer" id="slicer-loyalty">
+    <div class="slicer-group"><span class="slicer-label">DATE</span>
+      <select onchange="setDate(0,this.value)"><option value="0" selected="">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option></select>
+      <span style="font-size:11px;color:var(--text3)">–</span>
+      <select onchange="setDate(1,this.value)"><option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11" selected="">Dec</option></select>
+    </div>
+    <div class="slicer-sep"></div>
+    <div class="slicer-group"><span class="slicer-label">CHANNEL</span><button class="pill" id="slicer-loyalty-ch-POS" style="background:#378ADD;color:#fff;border-color:#378ADD
+    " onclick="toggleFilter('channels','POS','slicer-loyalty')">POS</button><button class="pill" id="slicer-loyalty-ch-WEB" style="background:#1D9E75;color:#fff;border-color:#1D9E75
+    " onclick="toggleFilter('channels','WEB','slicer-loyalty')">WEB</button><button class="pill" id="slicer-loyalty-ch-APP" style="background:#7F77DD;color:#fff;border-color:#7F77DD
+    " onclick="toggleFilter('channels','APP','slicer-loyalty')">APP</button></div>
+    <div class="slicer-sep"></div>
+    <div class="slicer-group"><span class="slicer-label">TIER</span><button class="pill" id="slicer-loyalty-ti-Bronze" style="background:#BA7517;color:#fff;border-color:#BA7517
+    " onclick="toggleFilter('tiers','Bronze','slicer-loyalty')">Bronze</button><button class="pill" id="slicer-loyalty-ti-Silver" style="background:#888780;color:#fff;border-color:#888780
+    " onclick="toggleFilter('tiers','Silver','slicer-loyalty')">Silver</button><button class="pill" id="slicer-loyalty-ti-Gold" style="background:#639922;color:#fff;border-color:#639922
+    " onclick="toggleFilter('tiers','Gold','slicer-loyalty')">Gold</button><button class="pill" id="slicer-loyalty-ti-VIP" style="background:#7F77DD;color:#fff;border-color:#7F77DD
+    " onclick="toggleFilter('tiers','VIP','slicer-loyalty')">VIP</button></div>
+    </div>
+  <div class="kpi-grid" id="kpi-loyalty" style="grid-template-columns:repeat(5,1fr)"><div class="kpi-card">
+    <div class="lbl">Points Earned</div>
+    <div class="val" style="color:var(--text)">9633.1K</div>
+    <div class="sub">Period total</div>
+  </div><div class="kpi-card">
+    <div class="lbl">Points Redeemed</div>
+    <div class="val" style="color:#1D9E75">3207.2K</div>
+    <div class="sub">Period total</div>
+  </div><div class="kpi-card">
+    <div class="lbl">Points Balance</div>
+    <div class="val" style="color:#BA7517">155.7K</div>
+    <div class="sub">Outstanding liability</div>
+  </div><div class="kpi-card">
+    <div class="lbl">Redemption Rate</div>
+    <div class="val" style="color:#639922">32.8%</div>
+    <div class="sub">Target: 30%</div>
+  </div><div class="kpi-card">
+    <div class="lbl">Active Members</div>
+    <div class="val" style="color:#7F77DD">16</div>
+    <div class="sub">Last 90 days</div>
+  </div></div>
+  <div class="chart-grid" style="grid-template-columns:2fr 1fr 1fr">
+    <div class="chart-card"><h4>Points earned vs redeemed — monthly</h4><div class="chart-box"><canvas id="c-points" width="584" height="220" style="display: block; box-sizing: border-box; height: 220px; width: 584px;"></canvas></div></div>
+    <div class="chart-card"><h4>Redemption rate gauge</h4><div class="gauge-wrap" id="gauge-wrap"><svg viewBox="0 0 160 100" width="160" height="100">
+      <path d="M20 90 A70 70 0 0 1 140 90" fill="none" stroke="#e0ded8" stroke-width="14" stroke-linecap="round"></path>
+      <path d="M20 90 A70 70 0 0 1 140 90" fill="none" stroke="#639922" stroke-width="14" stroke-linecap="round" stroke-dasharray="72.60000000000001 220"></path>
+      <text x="80" y="84" text-anchor="middle" font-size="22" font-weight="600" fill="#639922">33%</text>
+      <text x="80" y="98" text-anchor="middle" font-size="10" fill="#888780">Redemption Rate</text>
+      <text x="20" y="105" text-anchor="middle" font-size="9" fill="#888780">0%</text>
+      <text x="140" y="105" text-anchor="middle" font-size="9" fill="#888780">100%</text>
+      <text x="80" y="58" text-anchor="middle" font-size="9" fill="#639922">▲ 30% target</text>
+    </svg>
+    <p style="font-size:11px;color:#639922;margin-top:4px;font-weight:500">✓ On target</p></div></div>
+    <div class="chart-card"><h4>Tier distribution</h4><div class="chart-box"><canvas id="c-tierDist" width="277" height="220" style="display: block; box-sizing: border-box; height: 220px; width: 277px;"></canvas></div></div>
+  </div>
+  <div class="chart-grid" style="grid-template-columns:1fr 2fr">
+    <div class="chart-card"><h4>Churn risk distribution</h4><div class="chart-box"><canvas id="c-churnDist" width="382" height="220" style="display: block; box-sizing: border-box; height: 220px; width: 382px;"></canvas></div></div>
+    <div class="chart-card"><h4>At-risk customer list</h4>
+      <div class="tbl-wrap"><table id="t-atrisk">
+        <thead><tr><th>Customer</th><th>Tier</th><th>Pts Balance</th><th>Days</th><th>CLV</th><th>Score</th><th>Risk</th></tr></thead>
+        <tbody><tr>
+      <td>Piotr Nowak</td><td><span class="tag" style="background:#88878033;color:#888780">Silver</span></td><td>4.1K</td>
+      <td>395d</td><td>$69K</td>
+      <td><div class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:99%;background:#E24B4A"></div></div><span>99</span></div></td>
+      <td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Very High</span></td>
+    </tr><tr>
+      <td>Svetlana Ivanova</td><td><span class="tag" style="background:#63992233;color:#639922">Gold</span></td><td>4.2K</td>
+      <td>390d</td><td>$182K</td>
+      <td><div class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:98%;background:#E24B4A"></div></div><span>98</span></div></td>
+      <td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Very High</span></td>
+    </tr><tr>
+      <td>James Osei</td><td><span class="tag" style="background:#88878033;color:#888780">Silver</span></td><td>4.7K</td>
+      <td>383d</td><td>$163K</td>
+      <td><div class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:96%;background:#E24B4A"></div></div><span>96</span></div></td>
+      <td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Very High</span></td>
+    </tr><tr>
+      <td>Ana Costa</td><td><span class="tag" style="background:#7F77DD33;color:#7F77DD">VIP</span></td><td>1.1K</td>
+      <td>371d</td><td>$158K</td>
+      <td><div class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:93%;background:#E24B4A"></div></div><span>93</span></div></td>
+      <td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Very High</span></td>
+    </tr><tr>
+      <td>Soo-Jin Park</td><td><span class="tag" style="background:#63992233;color:#639922">Gold</span></td><td>3.7K</td>
+      <td>360d</td><td>$120K</td>
+      <td><div class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:90%;background:#E24B4A"></div></div><span>90</span></div></td>
+      <td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Very High</span></td>
+    </tr><tr>
+      <td>Omar Farouk</td><td><span class="tag" style="background:#63992233;color:#639922">Gold</span></td><td>4.7K</td>
+      <td>350d</td><td>$75K</td>
+      <td><div class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:88%;background:#E24B4A"></div></div><span>88</span></div></td>
+      <td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Very High</span></td>
+    </tr><tr>
+      <td>Chloe Dubois</td><td><span class="tag" style="background:#88878033;color:#888780">Silver</span></td><td>4.6K</td>
+      <td>344d</td><td>$21K</td>
+      <td><div class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:86%;background:#E24B4A"></div></div><span>86</span></div></td>
+      <td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Very High</span></td>
+    </tr><tr>
+      <td>Sara Perez</td><td><span class="tag" style="background:#BA751733;color:#BA7517">Bronze</span></td><td>4.5K</td>
+      <td>330d</td><td>$110K</td>
+      <td><div class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:83%;background:#E24B4A"></div></div><span>83</span></div></td>
+      <td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Very High</span></td>
+    </tr><tr>
+      <td>Aleksei Volkov</td><td><span class="tag" style="background:#7F77DD33;color:#7F77DD">VIP</span></td><td>3.7K</td>
+      <td>330d</td><td>$47K</td>
+      <td><div class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:83%;background:#E24B4A"></div></div><span>83</span></div></td>
+      <td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Very High</span></td>
+    </tr><tr>
+      <td>Lena Fischer</td><td><span class="tag" style="background:#7F77DD33;color:#7F77DD">VIP</span></td><td>4.2K</td>
+      <td>315d</td><td>$75K</td>
+      <td><div class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:79%;background:#E24B4A"></div></div><span>79</span></div></td>
+      <td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Very High</span></td>
+    </tr></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAGE 3: OMNICHANNEL ══ -->
+<div class="page" id="page-omni">
+  <div class="slicer" id="slicer-omni">
+    <div class="slicer-group"><span class="slicer-label">DATE</span>
+      <select onchange="setDate(0,this.value)"><option value="0" selected="">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option></select>
+      <span style="font-size:11px;color:var(--text3)">–</span>
+      <select onchange="setDate(1,this.value)"><option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11" selected="">Dec</option></select>
+    </div>
+    <div class="slicer-sep"></div>
+    <div class="slicer-group"><span class="slicer-label">CHANNEL</span><button class="pill" id="slicer-omni-ch-POS" style="background:#378ADD;color:#fff;border-color:#378ADD
+    " onclick="toggleFilter('channels','POS','slicer-omni')">POS</button><button class="pill" id="slicer-omni-ch-WEB" style="background:#1D9E75;color:#fff;border-color:#1D9E75
+    " onclick="toggleFilter('channels','WEB','slicer-omni')">WEB</button><button class="pill" id="slicer-omni-ch-APP" style="background:#7F77DD;color:#fff;border-color:#7F77DD
+    " onclick="toggleFilter('channels','APP','slicer-omni')">APP</button></div>
+    <div class="slicer-sep"></div>
+    <div class="slicer-group"><span class="slicer-label">TIER</span><button class="pill" id="slicer-omni-ti-Bronze" style="background:#BA7517;color:#fff;border-color:#BA7517
+    " onclick="toggleFilter('tiers','Bronze','slicer-omni')">Bronze</button><button class="pill" id="slicer-omni-ti-Silver" style="background:#888780;color:#fff;border-color:#888780
+    " onclick="toggleFilter('tiers','Silver','slicer-omni')">Silver</button><button class="pill" id="slicer-omni-ti-Gold" style="background:#639922;color:#fff;border-color:#639922
+    " onclick="toggleFilter('tiers','Gold','slicer-omni')">Gold</button><button class="pill" id="slicer-omni-ti-VIP" style="background:#7F77DD;color:#fff;border-color:#7F77DD
+    " onclick="toggleFilter('tiers','VIP','slicer-omni')">VIP</button></div>
+    </div>
+  <div class="kpi-grid" id="kpi-omni" style="grid-template-columns:repeat(5,1fr)"><div class="kpi-card">
+    <div class="lbl">Total Revenue</div>
+    <div class="val" style="color:var(--text)">$12.3M</div>
+    <div class="sub">All channels</div>
+  </div><div class="kpi-card">
+    <div class="lbl">Total Orders</div>
+    <div class="val" style="color:var(--text)">997</div>
+    <div class="sub">Omnichannel</div>
+  </div><div class="kpi-card">
+    <div class="lbl">Avg Basket Size</div>
+    <div class="val" style="color:#1D9E75">$12K</div>
+    <div class="sub">Per order</div>
+  </div><div class="kpi-card">
+    <div class="lbl">Repeat Customer</div>
+    <div class="val" style="color:#7F77DD">27%</div>
+    <div class="sub">Retention rate</div>
+  </div><div class="kpi-card">
+    <div class="lbl">Active Channels</div>
+    <div class="val" style="color:var(--text)">3/3</div>
+    <div class="sub">Selected</div>
+  </div></div>
+  <div class="chart-grid" style="grid-template-columns:1fr 2fr">
+    <div class="chart-card"><h4>Channel revenue share</h4><div class="chart-box"><canvas id="c-chanShare" width="382" height="220" style="display: block; box-sizing: border-box; height: 220px; width: 382px;"></canvas></div></div>
+    <div class="chart-card"><h4>Orders by channel — monthly trend</h4><div class="chart-box"><canvas id="c-ordTrend" width="795" height="220" style="display: block; box-sizing: border-box; height: 220px; width: 795px;"></canvas></div></div>
+  </div>
+  <div class="chart-grid" style="grid-template-columns:2fr 1fr">
+    <div class="chart-card"><h4>Avg basket size by channel — monthly</h4><div class="chart-box"><canvas id="c-basket" width="795" height="220" style="display: block; box-sizing: border-box; height: 220px; width: 795px;"></canvas></div></div>
+    <div class="chart-card"><h4>Customer journey — first → current channel</h4>
+      <table class="matrix" id="t-journey" style="font-size:12px;margin-top:8px">
+        <thead><tr><th style="padding:5px 8px">First ↓ / Current →</th><th style="padding:5px 8px;color:#378ADD">POS</th><th style="padding:5px 8px;color:#1D9E75">WEB</th><th style="padding:5px 8px;color:#7F77DD">APP</th></tr></thead><tbody><tr>
+      <td style="padding:5px 8px;font-weight:500;color:#378ADD">POS</td>
+      <td style="padding:5px 8px"><span class="mx-cell" style="background:#378ADD44;color:#378ADD;font-weight:600">5</span></td><td style="padding:5px 8px"><span class="mx-cell" style="background:#1D9E7518;color:var(--text2)">3</span></td><td style="padding:5px 8px"><span class="mx-cell" style="background:#7F77DD18;color:var(--text2)">5</span></td>
+    </tr><tr>
+      <td style="padding:5px 8px;font-weight:500;color:#1D9E75">WEB</td>
+      <td style="padding:5px 8px"><span class="mx-cell" style="background:#378ADD18;color:var(--text2)">12</span></td><td style="padding:5px 8px"><span class="mx-cell" style="background:#1D9E7544;color:#1D9E75;font-weight:600">11</span></td><td style="padding:5px 8px"><span class="mx-cell" style="background:#7F77DD18;color:var(--text2)">8</span></td>
+    </tr><tr>
+      <td style="padding:5px 8px;font-weight:500;color:#7F77DD">APP</td>
+      <td style="padding:5px 8px"><span class="mx-cell" style="background:#378ADD18;color:var(--text2)">4</span></td><td style="padding:5px 8px"><span class="mx-cell" style="background:#1D9E7518;color:var(--text2)">3</span></td><td style="padding:5px 8px"><span class="mx-cell" style="background:#7F77DD44;color:#7F77DD;font-weight:600">9</span></td>
+    </tr></tbody>
+      </table>
+      <p style="font-size:10px;color:var(--text3);margin-top:10px">Diagonal = retained · Off-diagonal = cross-channel migration</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAGE 4: BRAND & SKU ══ -->
+<div class="page active" id="page-brand">
+  <div class="slicer" id="slicer-brand">
+    <div class="slicer-group"><span class="slicer-label">DATE</span>
+      <select onchange="setDate(0,this.value)"><option value="0" selected="">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option></select>
+      <span style="font-size:11px;color:var(--text3)">–</span>
+      <select onchange="setDate(1,this.value)"><option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11" selected="">Dec</option></select>
+    </div>
+    <div class="slicer-sep"></div>
+    <div class="slicer-group"><span class="slicer-label">CHANNEL</span><button class="pill" id="slicer-brand-ch-POS" style="background:#378ADD;color:#fff;border-color:#378ADD
+    " onclick="toggleFilter('channels','POS','slicer-brand')">POS</button><button class="pill" id="slicer-brand-ch-WEB" style="background:#1D9E75;color:#fff;border-color:#1D9E75
+    " onclick="toggleFilter('channels','WEB','slicer-brand')">WEB</button><button class="pill" id="slicer-brand-ch-APP" style="background:#7F77DD;color:#fff;border-color:#7F77DD
+    " onclick="toggleFilter('channels','APP','slicer-brand')">APP</button></div>
+    <div class="slicer-sep"></div>
+    <div class="slicer-group"><span class="slicer-label">TIER</span><button class="pill" id="slicer-brand-ti-Bronze" style="background:#BA7517;color:#fff;border-color:#BA7517
+    " onclick="toggleFilter('tiers','Bronze','slicer-brand')">Bronze</button><button class="pill" id="slicer-brand-ti-Silver" style="background:#888780;color:#fff;border-color:#888780
+    " onclick="toggleFilter('tiers','Silver','slicer-brand')">Silver</button><button class="pill" id="slicer-brand-ti-Gold" style="background:#639922;color:#fff;border-color:#639922
+    " onclick="toggleFilter('tiers','Gold','slicer-brand')">Gold</button><button class="pill" id="slicer-brand-ti-VIP" style="background:#7F77DD;color:#fff;border-color:#7F77DD
+    " onclick="toggleFilter('tiers','VIP','slicer-brand')">VIP</button></div>
+    <div class="slicer-sep"></div>
+    <div class="slicer-group"><span class="slicer-label">SKU VELOCITY</span>
+    <button class="pill" id="slicer-brand-vel-Fast" style="background:#1D9E75;color:#fff;border-color:#1D9E75
+      " onclick="toggleFilter('vel','Fast','slicer-brand')">Fast</button><button class="pill" id="slicer-brand-vel-Normal" style="background:#378ADD;color:#fff;border-color:#378ADD
+      " onclick="toggleFilter('vel','Normal','slicer-brand')">Normal</button><button class="pill" id="slicer-brand-vel-Slow" style="background:#BA7517;color:#fff;border-color:#BA7517
+      " onclick="toggleFilter('vel','Slow','slicer-brand')">Slow</button><button class="pill" id="slicer-brand-vel-Dead-Risk" style="background:#D85A30;color:#fff;border-color:#D85A30
+      " onclick="toggleFilter('vel','Dead Risk','slicer-brand')">Dead Risk</button><button class="pill" id="slicer-brand-vel-Dead" style="background:#E24B4A;color:#fff;border-color:#E24B4A
+      " onclick="toggleFilter('vel','Dead','slicer-brand')">Dead</button>
+    </div></div>
+  <div class="kpi-grid" id="kpi-brand" style="grid-template-columns:repeat(4,1fr)"><div class="kpi-card">
+    <div class="lbl">Brand Revenue</div>
+    <div class="val" style="color:var(--text)">$2.0M</div>
+    <div class="sub">Filtered period</div>
+  </div><div class="kpi-card">
+    <div class="lbl">Avg GMROI</div>
+    <div class="val" style="color:#639922">2.17×</div>
+    <div class="sub">Gross margin ROI</div>
+  </div><div class="kpi-card">
+    <div class="lbl">Dead/At-Risk SKUs</div>
+    <div class="val" style="color:#E24B4A">12</div>
+    <div class="sub">Needs clearance</div>
+  </div><div class="kpi-card">
+    <div class="lbl">Avg Days on Hand</div>
+    <div class="val" style="color:#E24B4A">103d</div>
+    <div class="sub">Across all SKUs</div>
+  </div></div>
+  <div class="chart-grid" style="grid-template-columns:2fr 1fr">
+    <div class="chart-card"><h4>Brand revenue — top 8</h4><div class="chart-box"><canvas id="c-brandRev" width="795" height="220" style="display: block; box-sizing: border-box; height: 220px; width: 795px;"></canvas></div></div>
+    <div class="chart-card"><h4>SKU velocity distribution</h4><div class="chart-box"><canvas id="c-velDist" width="382" height="220" style="display: block; box-sizing: border-box; height: 220px; width: 382px;"></canvas></div></div>
+  </div>
+  <div class="chart-grid" style="grid-template-columns:1fr 1fr">
+    <div class="chart-card"><h4>GMROI by brand</h4><div class="chart-box" style="height:240px"><canvas id="c-gmroi" width="589" height="240" style="display: block; box-sizing: border-box; height: 240px; width: 589px;"></canvas></div></div>
+    <div class="chart-card"><h4>SKU velocity — top 20 with DOH &amp; aging</h4>
+      <div class="tbl-wrap"><table id="t-sku">
+        <thead><tr><th>#</th><th>SKU</th><th>Brand</th><th>DOH</th><th>Qty</th><th>Revenue</th><th>Velocity</th></tr></thead>
+        <tbody><tr>
+      <td style="color:var(--text3)">1</td>
+      <td style="font-family:monospace;font-size:10px">SKU-016</td>
+      <td>Skechers</td>
+      <td style="color:#E24B4A;font-weight:600">205d</td>
+      <td>510</td><td>$35K</td>
+      <td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Dead</span></td>
+    </tr><tr>
+      <td style="color:var(--text3)">2</td>
+      <td style="font-family:monospace;font-size:10px">SKU-004</td>
+      <td>Asics</td>
+      <td style="color:var(--text);font-weight:400">34d</td>
+      <td>461</td><td>$26K</td>
+      <td><span class="tag" style="background:#378ADD33;color:#378ADD">Normal</span></td>
+    </tr><tr>
+      <td style="color:var(--text3)">3</td>
+      <td style="font-family:monospace;font-size:10px">SKU-014</td>
+      <td>Nike</td>
+      <td style="color:#E24B4A;font-weight:600">119d</td>
+      <td>457</td><td>$12K</td>
+      <td><span class="tag" style="background:#D85A3033;color:#D85A30">Dead Risk</span></td>
+    </tr><tr>
+      <td style="color:var(--text3)">4</td>
+      <td style="font-family:monospace;font-size:10px">SKU-019</td>
+      <td>Reebok</td>
+      <td style="color:var(--text);font-weight:400">53d</td>
+      <td>434</td><td>$45K</td>
+      <td><span class="tag" style="background:#378ADD33;color:#378ADD">Normal</span></td>
+    </tr><tr>
+      <td style="color:var(--text3)">5</td>
+      <td style="font-family:monospace;font-size:10px">SKU-017</td>
+      <td>Nike</td>
+      <td style="color:#E24B4A;font-weight:600">114d</td>
+      <td>424</td><td>$78K</td>
+      <td><span class="tag" style="background:#D85A3033;color:#D85A30">Dead Risk</span></td>
+    </tr><tr>
+      <td style="color:var(--text3)">6</td>
+      <td style="font-family:monospace;font-size:10px">SKU-003</td>
+      <td>Asics</td>
+      <td style="color:#E24B4A;font-weight:600">107d</td>
+      <td>413</td><td>$38K</td>
+      <td><span class="tag" style="background:#D85A3033;color:#D85A30">Dead Risk</span></td>
+    </tr><tr>
+      <td style="color:var(--text3)">7</td>
+      <td style="font-family:monospace;font-size:10px">SKU-002</td>
+      <td>Skechers</td>
+      <td style="color:var(--text);font-weight:400">30d</td>
+      <td>381</td><td>$25K</td>
+      <td><span class="tag" style="background:#1D9E7533;color:#1D9E75">Fast</span></td>
+    </tr><tr>
+      <td style="color:var(--text3)">8</td>
+      <td style="font-family:monospace;font-size:10px">SKU-013</td>
+      <td>Puma</td>
+      <td style="color:#E24B4A;font-weight:600">177d</td>
+      <td>369</td><td>$28K</td>
+      <td><span class="tag" style="background:#D85A3033;color:#D85A30">Dead Risk</span></td>
+    </tr><tr>
+      <td style="color:var(--text3)">9</td>
+      <td style="font-family:monospace;font-size:10px">SKU-005</td>
+      <td>Nike</td>
+      <td style="color:var(--text);font-weight:400">14d</td>
+      <td>357</td><td>$52K</td>
+      <td><span class="tag" style="background:#1D9E7533;color:#1D9E75">Fast</span></td>
+    </tr><tr>
+      <td style="color:var(--text3)">10</td>
+      <td style="font-family:monospace;font-size:10px">SKU-020</td>
+      <td>Vans</td>
+      <td style="color:#E24B4A;font-weight:600">143d</td>
+      <td>348</td><td>$38K</td>
+      <td><span class="tag" style="background:#D85A3033;color:#D85A30">Dead Risk</span></td>
+    </tr><tr>
+      <td style="color:var(--text3)">11</td>
+      <td style="font-family:monospace;font-size:10px">SKU-015</td>
+      <td>New Balance</td>
+      <td style="color:#E24B4A;font-weight:600">169d</td>
+      <td>292</td><td>$8K</td>
+      <td><span class="tag" style="background:#D85A3033;color:#D85A30">Dead Risk</span></td>
+    </tr><tr>
+      <td style="color:var(--text3)">12</td>
+      <td style="font-family:monospace;font-size:10px">SKU-011</td>
+      <td>Converse</td>
+      <td style="color:#E24B4A;font-weight:600">125d</td>
+      <td>278</td><td>$48K</td>
+      <td><span class="tag" style="background:#D85A3033;color:#D85A30">Dead Risk</span></td>
+    </tr><tr>
+      <td style="color:var(--text3)">13</td>
+      <td style="font-family:monospace;font-size:10px">SKU-006</td>
+      <td>Asics</td>
+      <td style="color:#E24B4A;font-weight:600">100d</td>
+      <td>276</td><td>$41K</td>
+      <td><span class="tag" style="background:#D85A3033;color:#D85A30">Dead Risk</span></td>
+    </tr><tr>
+      <td style="color:var(--text3)">14</td>
+      <td style="font-family:monospace;font-size:10px">SKU-007</td>
+      <td>Vans</td>
+      <td style="color:#E24B4A;font-weight:600">108d</td>
+      <td>240</td><td>$34K</td>
+      <td><span class="tag" style="background:#D85A3033;color:#D85A30">Dead Risk</span></td>
+    </tr><tr>
+      <td style="color:var(--text3)">15</td>
+      <td style="font-family:monospace;font-size:10px">SKU-012</td>
+      <td>Asics</td>
+      <td style="color:var(--text);font-weight:400">40d</td>
+      <td>175</td><td>$42K</td>
+      <td><span class="tag" style="background:#378ADD33;color:#378ADD">Normal</span></td>
+    </tr><tr>
+      <td style="color:var(--text3)">16</td>
+      <td style="font-family:monospace;font-size:10px">SKU-009</td>
+      <td>Puma</td>
+      <td style="color:#E24B4A;font-weight:600">207d</td>
+      <td>166</td><td>$13K</td>
+      <td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Dead</span></td>
+    </tr><tr>
+      <td style="color:var(--text3)">17</td>
+      <td style="font-family:monospace;font-size:10px">SKU-018</td>
+      <td>Nike</td>
+      <td style="color:#BA7517;font-weight:400">68d</td>
+      <td>165</td><td>$23K</td>
+      <td><span class="tag" style="background:#BA751733;color:#BA7517">Slow</span></td>
+    </tr><tr>
+      <td style="color:var(--text3)">18</td>
+      <td style="font-family:monospace;font-size:10px">SKU-010</td>
+      <td>Converse</td>
+      <td style="color:#E24B4A;font-weight:600">196d</td>
+      <td>144</td><td>$44K</td>
+      <td><span class="tag" style="background:#E24B4A33;color:#E24B4A">Dead</span></td>
+    </tr><tr>
+      <td style="color:var(--text3)">19</td>
+      <td style="font-family:monospace;font-size:10px">SKU-008</td>
+      <td>Asics</td>
+      <td style="color:var(--text);font-weight:400">50d</td>
+      <td>99</td><td>$34K</td>
+      <td><span class="tag" style="background:#378ADD33;color:#378ADD">Normal</span></td>
+    </tr><tr>
+      <td style="color:var(--text3)">20</td>
+      <td style="font-family:monospace;font-size:10px">SKU-001</td>
+      <td>Nike</td>
+      <td style="color:var(--text);font-weight:400">10d</td>
+      <td>50</td><td>$5K</td>
+      <td><span class="tag" style="background:#1D9E7533;color:#1D9E75">Fast</span></td>
+    </tr></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const CHANNELS=["POS","WEB","APP"];
+const TIERS=["Bronze","Silver","Gold","VIP"];
+const BRANDS=["Nike","Adidas","Puma","Reebok","Under Armour","New Balance","Asics","Skechers","Vans","Converse"];
+const CHURN_RISKS=["Low","Medium","High","Very High"];
+const CNAMES=["Alice Chen","Bob Mwangi","Sara Perez","Tom Blake","Mei Lin","Carlos Ruiz","Fatima Al-Rashid","James Osei","Priya Nair","Erik Sven","Yuki Tanaka","Aisha Diallo","Marco Ricci","Nadia Kovač","Samuel Owusu","Ingrid Holm","Diego Vargas","Lena Fischer","Amara Diop","Ravi Sharma","Chioma Eze","Pierre Dupont","Ana Costa","Aleksei Volkov","Wanjiku Kamau","Soo-Jin Park","Tamar Avraham","Kofi Agyemang","Chloe Dubois","Ivan Petrov","Beatriz Santos","Tariq Mansour","Lindiwe Dube","Hamish McDonald","Rosa Flores","Yusuf Ahmed","Mei-Ling Wu","Brendan Walsh","Svetlana Ivanova","Kwame Asante","Hana Suzuki","Omar Farouk","Siobhan Murphy","Leila Ahmadi","Emeka Okafor","Astrid Larsen","Guillermo Herrera","Zanele Mokoena","Piotr Nowak","Amira Hassan","Takeshi Yamamoto","Nneka Obi","Vasile Popescu","Hira Khan","Mateus Souza","Njeri Waweru","Anya Petrova","Yaw Asare","Sadia Islam","Lukas Meyer"];
+const SKU_NAMES=["Air Max 90","Stan Smith","RS-X","Classic Leather","Charged Assert","Fresh Foam","Gel-Nimbus","D'Lite","Old Skool","Chuck Taylor","Ultraboost","Superstar","Suede","Club C","UA HOVR","860v13","Kayano","Go Walk","Slip-On","All Star"];
+
+function sd(s){let x=Math.sin(s)*10000;return x-Math.floor(x);}
+
+const rawSales=[];
+for(let m=0;m<12;m++){
+  CHANNELS.forEach((ch,ci)=>{
+    const base=ch==="POS"?420:ch==="WEB"?280:180;
+    const g=1+(m*0.03);
+    rawSales.push({month:m,channel:ch,
+      revenue:Math.round(base*g*(0.9+sd(m*10+ci)*0.2)*1000),
+      orders:Math.round((base/12)*g*(0.85+sd(m*20+ci)*0.3)),
+      pointsEarned:Math.round(base*g*800*(0.9+sd(m*40+ci)*0.2)),
+      pointsRedeemed:Math.round(base*g*300*(0.8+sd(m*50+ci)*0.2))
+    });
+  });
+}
+const customers=Array.from({length:60},(_,i)=>{
+  const ti=Math.floor(sd(i*7)*4);
+  const cv=sd(i*13)*180000+5000;
+  const ds=Math.floor(sd(i*17)*400);
+  return{id:`C${String(i+1).padStart(3,"0")}`,name:CNAMES[i]||`Customer ${i+1}`,
+    tier:TIERS[ti],clv:Math.round(cv),daysSince:ds,
+    churnRisk:ds<=30?"Low":ds<=90?"Medium":ds<=180?"High":"Very High",
+    churnScore:Math.min(100,Math.round(ds/4)),
+    pointsBalance:Math.round(sd(i*23)*5000+100),
+    totalRevenue:Math.round(cv*0.8),
+    channel:CHANNELS[Math.floor(sd(i*31)*3)],
+    firstChannel:CHANNELS[Math.floor(sd(i*37)*3)],
+    isActive:ds<=90,month:Math.floor(sd(i*41)*12)};
+});
+const skuData=Array.from({length:20},(_,i)=>{
+  const doh=Math.round(sd(i*11)*200+10);
+  return{rank:i+1,sku:`SKU-${String(i+1).padStart(3,"0")}`,name:SKU_NAMES[i],
+    brand:BRANDS[Math.floor(sd(i*19)*10)],doh,
+    velocity:doh<=30?"Fast":doh<=60?"Normal":doh<=90?"Slow":doh<=180?"Dead Risk":"Dead",
+    qtySold:Math.round(sd(i*29)*500+50),revenue:Math.round(sd(i*43)*80000+5000),
+    gmroi:parseFloat((sd(i*47)*4+0.5).toFixed(2)),
+    inventoryValue:Math.round(sd(i*53)*50000+2000),month:Math.floor(sd(i*59)*12)};
+});
+const brandData=BRANDS.map((b,i)=>({brand:b,
+  revenue:Math.round(sd(i*61)*300000+50000),
+  gmroi:parseFloat((sd(i*67)*3+1).toFixed(2)),
+  inventoryValue:Math.round(sd(i*71)*80000+10000),
+  gpMargin:parseFloat((sd(i*73)*0.3+0.15).toFixed(2)),
+  month:Math.floor(sd(i*79)*12)}));
+
+// ── COLORS ────────────────────────────────────────────────────────────────────
+const C={
+  blue:"#378ADD",teal:"#1D9E75",coral:"#D85A30",amber:"#BA7517",
+  purple:"#7F77DD",green:"#639922",gray:"#888780",red:"#E24B4A",
+  tier:{Bronze:"#BA7517",Silver:"#888780",Gold:"#639922",VIP:"#7F77DD"},
+  churn:{Low:"#1D9E75",Medium:"#BA7517",High:"#D85A30","Very High":"#E24B4A"},
+  vel:{Fast:"#1D9E75",Normal:"#378ADD",Slow:"#BA7517","Dead Risk":"#D85A30",Dead:"#E24B4A"},
+  ch:{POS:"#378ADD",WEB:"#1D9E75",APP:"#7F77DD"},
+  pie:["#378ADD","#1D9E75","#D85A30","#BA7517","#7F77DD","#639922","#888780","#D4537E","#E24B4A","#5DCAA5"]
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let state={dr:[0,11],channels:["POS","WEB","APP"],tiers:["Bronze","Silver","Gold","VIP"],
+  vel:["Fast","Normal","Slow","Dead Risk","Dead"],page:"exec"};
+const charts={};
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+const f$=v=>v>=1e6?"$"+(v/1e6).toFixed(1)+"M":v>=1000?"$"+(v/1000).toFixed(0)+"K":"$"+v;
+const fN=v=>v>=1000?(v/1000).toFixed(1)+"K":String(v);
+const pct=v=>(v*100).toFixed(1)+"%";
+function hex22(h){return h+"33";}
+
+function mkChart(id,cfg){
+  if(charts[id]){charts[id].destroy();delete charts[id];}
+  const el=document.getElementById(id);
+  if(!el)return;
+  charts[id]=new Chart(el,cfg);
+}
+
+function kpiCards(elId,cards){
+  const el=document.getElementById(elId);
+  if(!el)return;
+  el.innerHTML=cards.map(c=>`<div class="kpi-card">
+    <div class="lbl">${c.label}</div>
+    <div class="val" style="color:${c.color||"var(--text)"}">${c.value}</div>
+    <div class="sub">${c.sub||""}</div>
+  </div>`).join("");
+}
+
+function tag(label,color){
+  return `<span class="tag" style="background:${hex22(color)};color:${color}">${label}</span>`;
+}
+
+function scoreBar(score,color){
+  return `<div class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:${score}%;background:${color}"></div></div><span>${score}</span></div>`;
+}
+
+const gridCfg={color:"rgba(0,0,0,0.06)",drawBorder:false};
+const axBase={grid:gridCfg,border:{display:false},ticks:{font:{size:10},color:"#888780"}};
+const tooltipStyle={backgroundColor:"#fff",titleColor:"#1a1a18",bodyColor:"#6b6a64",borderColor:"#e0ded8",borderWidth:1,padding:10,cornerRadius:8,titleFont:{size:12,weight:"500"},bodyFont:{size:11}};
+
+// ── FILTERED DATA ──────────────────────────────────────────────────────────────
+function fSales(){return rawSales.filter(r=>r.month>=state.dr[0]&&r.month<=state.dr[1]&&state.channels.includes(r.channel));}
+function fCust(){return customers.filter(c=>c.month>=state.dr[0]&&c.month<=state.dr[1]&&state.tiers.includes(c.tier)&&state.channels.includes(c.channel));}
+function fBrand(){return brandData.filter(b=>b.month>=state.dr[0]&&b.month<=state.dr[1]);}
+function fSKU(){return skuData.filter(s=>s.month>=state.dr[0]&&s.month<=state.dr[1]&&state.vel.includes(s.velocity));}
+function mRange(){return MONTHS.slice(state.dr[0],state.dr[1]+1);}
+
+// ── SLICERS ────────────────────────────────────────────────────────────────────
+function buildSlicer(id,hasVel){
+  const el=document.getElementById(id);
+  if(!el)return;
+
+  const chOpts=CHANNELS.map(ch=>`<button class="pill" id="${id}-ch-${ch}"
+    style="${state.channels.includes(ch)?`background:${C.ch[ch]};color:#fff;border-color:${C.ch[ch]}`:""}
+    " onclick="toggleFilter('channels','${ch}','${id}')">${ch}</button>`).join("");
+
+  const tOpts=TIERS.map(t=>`<button class="pill" id="${id}-ti-${t}"
+    style="${state.tiers.includes(t)?`background:${C.tier[t]};color:#fff;border-color:${C.tier[t]}`:""}
+    " onclick="toggleFilter('tiers','${t}','${id}')">${t}</button>`).join("");
+
+  let velOpts="";
+  if(hasVel){
+    const vels=["Fast","Normal","Slow","Dead Risk","Dead"];
+    velOpts=`<div class="slicer-sep"></div>
+    <div class="slicer-group"><span class="slicer-label">SKU VELOCITY</span>
+    ${vels.map(v=>`<button class="pill" id="${id}-vel-${v.replace(" ","-")}"
+      style="${state.vel.includes(v)?`background:${C.vel[v]};color:#fff;border-color:${C.vel[v]}`:""}
+      " onclick="toggleFilter('vel','${v}','${id}')">${v}</button>`).join("")}
+    </div>`;
+  }
+
+  el.innerHTML=`
+    <div class="slicer-group"><span class="slicer-label">DATE</span>
+      <select onchange="setDate(0,this.value)">${MONTHS.map((m,i)=>`<option value="${i}"${i===state.dr[0]?" selected":""}>${m}</option>`).join("")}</select>
+      <span style="font-size:11px;color:var(--text3)">–</span>
+      <select onchange="setDate(1,this.value)">${MONTHS.map((m,i)=>`<option value="${i}"${i===state.dr[1]?" selected":""}>${m}</option>`).join("")}</select>
+    </div>
+    <div class="slicer-sep"></div>
+    <div class="slicer-group"><span class="slicer-label">CHANNEL</span>${chOpts}</div>
+    <div class="slicer-sep"></div>
+    <div class="slicer-group"><span class="slicer-label">TIER</span>${tOpts}</div>
+    ${velOpts}`;
+}
+
+window.toggleFilter=function(key,val,slicerId){
+  state[key]=state[key].includes(val)?state[key].filter(x=>x!==val):[...state[key],val];
+  renderAll();
+};
+window.setDate=function(idx,val){
+  state.dr[idx]=+val;
+  if(state.dr[0]>state.dr[1])state.dr[1-idx]=state.dr[idx];
+  renderAll();
+};
+
+// ── PAGE 1: EXEC ───────────────────────────────────────────────────────────────
+function renderExec(){
+  buildSlicer("slicer-exec",false);
+  const fs=fSales(),fc=fCust();
+  const totRev=fs.reduce((a,b)=>a+b.revenue,0);
+  const totOrd=fs.reduce((a,b)=>a+b.orders,0);
+  const avgCLV=fc.length?Math.round(fc.reduce((a,b)=>a+b.clv,0)/fc.length):0;
+  const chHigh=fc.filter(c=>["High","Very High"].includes(c.churnRisk)).length;
+  const gmr=(brandData.reduce((a,b)=>a+b.gmroi,0)/brandData.length).toFixed(1);
+
+  kpiCards("kpi-exec",[
+    {label:"Total Revenue",value:f$(totRev),sub:"FY 2024"},
+    {label:"Total Orders",value:fN(totOrd),sub:"Omnichannel"},
+    {label:"Active Customers",value:fc.length,sub:"Filtered"},
+    {label:"Avg CLV 3Y",value:f$(avgCLV),sub:"Customer lifetime",color:C.purple},
+    {label:"Churn High Risk",value:chHigh,sub:"Need attention",color:C.red},
+    {label:"Avg GMROI",value:gmr+"×",sub:"Gross margin ROI",color:C.green},
+  ]);
+
+  // Revenue trend
+  const trendLabels=mRange();
+  const trendRev=trendLabels.map((_,i)=>{const idx=state.dr[0]+i;return rawSales.filter(r=>r.month===idx&&state.channels.includes(r.channel)).reduce((a,b)=>a+b.revenue,0);});
+  mkChart("c-revTrend",{type:"line",data:{labels:trendLabels,datasets:[{label:"Revenue",data:trendRev,borderColor:C.blue,backgroundColor:C.blue+"22",borderWidth:2,fill:true,tension:.4,pointRadius:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{...tooltipStyle,callbacks:{label:ctx=>" "+f$(ctx.raw)}}},scales:{x:{...axBase,grid:{display:false}},y:{...axBase,ticks:{...axBase.ticks,callback:v=>f$(v)}}}}});
+
+  // Channel perf
+  const chLabels=CHANNELS.filter(c=>state.channels.includes(c));
+  const chRev=chLabels.map(ch=>fs.filter(r=>r.channel===ch).reduce((a,b)=>a+b.revenue,0));
+  mkChart("c-chanPerf",{type:"bar",data:{labels:chLabels,datasets:[{label:"Revenue",data:chRev,backgroundColor:chLabels.map(ch=>C.ch[ch]),borderRadius:5,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{...tooltipStyle,callbacks:{label:ctx=>" "+f$(ctx.raw)}}},scales:{x:{...axBase,grid:{display:false}},y:{...axBase,ticks:{...axBase.ticks,callback:v=>f$(v)}}}}});
+
+  // CLV by tier
+  const tLabels=TIERS.filter(t=>state.tiers.includes(t));
+  const tCLV=tLabels.map(t=>{const g=fc.filter(c=>c.tier===t);return g.length?Math.round(g.reduce((a,b)=>a+b.clv,0)/g.length):0;});
+  mkChart("c-clvTier",{type:"bar",data:{labels:tLabels,datasets:[{label:"Avg CLV",data:tCLV,backgroundColor:tLabels.map(t=>C.tier[t]),borderRadius:5,borderSkipped:false}]},
+    options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{...tooltipStyle,callbacks:{label:ctx=>" "+f$(ctx.raw)}}},scales:{x:{...axBase,ticks:{...axBase.ticks,callback:v=>f$(v)}},y:{...axBase,grid:{display:false}}}}});
+
+  // Churn table
+  const tbody=document.querySelector("#t-churn tbody");
+  if(tbody){
+    const rows=fc.filter(c=>["High","Very High"].includes(c.churnRisk)).sort((a,b)=>b.churnScore-a.churnScore).slice(0,8);
+    tbody.innerHTML=rows.map(c=>`<tr>
+      <td>${c.name}</td><td>${tag(c.tier,C.tier[c.tier])}</td><td>${c.daysSince}d</td>
+      <td>${scoreBar(c.churnScore,c.churnScore>70?C.red:C.coral)}</td>
+      <td>${f$(c.totalRevenue)}</td><td>${tag(c.churnRisk,C.churn[c.churnRisk])}</td>
+    </tr>`).join("");
+  }
+}
+
+// ── PAGE 2: LOYALTY ────────────────────────────────────────────────────────────
+function renderLoyalty(){
+  buildSlicer("slicer-loyalty",false);
+  const fs=fSales(),fc=fCust();
+  const totE=fs.reduce((a,b)=>a+b.pointsEarned,0);
+  const totR=fs.reduce((a,b)=>a+b.pointsRedeemed,0);
+  const totB=fc.reduce((a,b)=>a+b.pointsBalance,0);
+  const rRate=totR/(totE+totB)||0;
+  const active=fc.filter(c=>c.isActive).length;
+
+  kpiCards("kpi-loyalty",[
+    {label:"Points Earned",value:fN(totE),sub:"Period total"},
+    {label:"Points Redeemed",value:fN(totR),sub:"Period total",color:C.teal},
+    {label:"Points Balance",value:fN(totB),sub:"Outstanding liability",color:C.amber},
+    {label:"Redemption Rate",value:pct(rRate),sub:"Target: 30%",color:rRate>=0.3?C.green:rRate>=0.15?C.amber:C.red},
+    {label:"Active Members",value:active,sub:"Last 90 days",color:C.purple},
+  ]);
+
+  // Points trend
+  const ml=mRange();
+  const ptsE=ml.map((_,i)=>{const idx=state.dr[0]+i;return rawSales.filter(r=>r.month===idx&&state.channels.includes(r.channel)).reduce((a,b)=>a+b.pointsEarned,0);});
+  const ptsR=ml.map((_,i)=>{const idx=state.dr[0]+i;return rawSales.filter(r=>r.month===idx&&state.channels.includes(r.channel)).reduce((a,b)=>a+b.pointsRedeemed,0);});
+  mkChart("c-points",{type:"bar",data:{labels:ml,datasets:[
+    {label:"Earned",data:ptsE,backgroundColor:C.teal,borderRadius:4,borderSkipped:false},
+    {label:"Redeemed",data:ptsR,backgroundColor:C.coral,borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11},boxWidth:10,boxHeight:10}},tooltip:{...tooltipStyle}},scales:{x:{...axBase,grid:{display:false}},y:{...axBase,ticks:{...axBase.ticks,callback:v=>fN(v)}}}}});
+
+  // Gauge SVG
+  const gv=Math.round(rRate*100);
+  const gEl=document.getElementById("gauge-wrap");
+  if(gEl){
+    const clr=gv>=30?C.green:gv>=15?C.amber:C.red;
+    const dash=gv*2.2;
+    gEl.innerHTML=`<svg viewBox="0 0 160 100" width="160" height="100">
+      <path d="M20 90 A70 70 0 0 1 140 90" fill="none" stroke="#e0ded8" stroke-width="14" stroke-linecap="round"/>
+      <path d="M20 90 A70 70 0 0 1 140 90" fill="none" stroke="${clr}" stroke-width="14" stroke-linecap="round"
+        stroke-dasharray="${dash} 220"/>
+      <text x="80" y="84" text-anchor="middle" font-size="22" font-weight="600" fill="${clr}">${gv}%</text>
+      <text x="80" y="98" text-anchor="middle" font-size="10" fill="#888780">Redemption Rate</text>
+      <text x="20" y="105" text-anchor="middle" font-size="9" fill="#888780">0%</text>
+      <text x="140" y="105" text-anchor="middle" font-size="9" fill="#888780">100%</text>
+      <text x="80" y="58" text-anchor="middle" font-size="9" fill="${C.green}">▲ 30% target</text>
+    </svg>
+    <p style="font-size:11px;color:${clr};margin-top:4px;font-weight:500">${gv>=30?"✓ On target":gv>=15?"⚠ Below target":"✗ Critical"}</p>`;
+  }
+
+  // Tier donut
+  const tl=TIERS.filter(t=>state.tiers.includes(t));
+  const tv=tl.map(t=>fc.filter(c=>c.tier===t).length);
+  mkChart("c-tierDist",{type:"doughnut",data:{labels:tl,datasets:[{data:tv,backgroundColor:tl.map(t=>C.tier[t]),borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{font:{size:10},boxWidth:10,boxHeight:10,padding:8}},tooltip:{...tooltipStyle}}}});
+
+  // Churn dist bar
+  const cr=CHURN_RISKS.map(r=>({r,v:fc.filter(c=>c.churnRisk===r).length}));
+  mkChart("c-churnDist",{type:"bar",data:{labels:cr.map(x=>x.r),datasets:[{label:"Customers",data:cr.map(x=>x.v),backgroundColor:cr.map(x=>C.churn[x.r]),borderRadius:5,borderSkipped:false}]},
+    options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{...tooltipStyle}},scales:{x:{...axBase},y:{...axBase,grid:{display:false}}}}});
+
+  // At-risk table
+  const tbody=document.querySelector("#t-atrisk tbody");
+  if(tbody){
+    const rows=fc.filter(c=>["High","Very High"].includes(c.churnRisk)).sort((a,b)=>b.churnScore-a.churnScore).slice(0,10);
+    tbody.innerHTML=rows.map(c=>`<tr>
+      <td>${c.name}</td><td>${tag(c.tier,C.tier[c.tier])}</td><td>${fN(c.pointsBalance)}</td>
+      <td>${c.daysSince}d</td><td>${f$(c.clv)}</td>
+      <td>${scoreBar(c.churnScore,c.churnScore>70?C.red:C.coral)}</td>
+      <td>${tag(c.churnRisk,C.churn[c.churnRisk])}</td>
+    </tr>`).join("");
+  }
+}
+
+// ── PAGE 3: OMNICHANNEL ────────────────────────────────────────────────────────
+function renderOmni(){
+  buildSlicer("slicer-omni",false);
+  const fs=fSales(),fc=fCust();
+  const totRev=fs.reduce((a,b)=>a+b.revenue,0);
+  const totOrd=fs.reduce((a,b)=>a+b.orders,0);
+  const avgB=totOrd?Math.round(totRev/totOrd):0;
+  const repRate=fc.length?Math.round(fc.filter(c=>c.isActive).length/fc.length*100):0;
+
+  kpiCards("kpi-omni",[
+    {label:"Total Revenue",value:f$(totRev),sub:"All channels"},
+    {label:"Total Orders",value:fN(totOrd),sub:"Omnichannel"},
+    {label:"Avg Basket Size",value:f$(avgB),sub:"Per order",color:C.teal},
+    {label:"Repeat Customer",value:repRate+"%",sub:"Retention rate",color:C.purple},
+    {label:"Active Channels",value:state.channels.length+"/3",sub:"Selected"},
+  ]);
+
+  // Channel share donut
+  const chs=CHANNELS.filter(c=>state.channels.includes(c));
+  const chsRev=chs.map(ch=>fs.filter(r=>r.channel===ch).reduce((a,b)=>a+b.revenue,0));
+  mkChart("c-chanShare",{type:"doughnut",data:{labels:chs,datasets:[{data:chsRev,backgroundColor:chs.map(ch=>C.ch[ch]),borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{font:{size:11},boxWidth:10,boxHeight:10,padding:8}},tooltip:{...tooltipStyle,callbacks:{label:ctx=>" "+f$(ctx.raw)+" ("+Math.round(ctx.parsed/chsRev.reduce((a,b)=>a+b,0)*100)+"%)"}}}}});
+
+  // Orders trend
+  const ml=mRange();
+  const ordDs=chs.map(ch=>({label:ch,data:ml.map((_,i)=>{const idx=state.dr[0]+i;return rawSales.filter(r=>r.month===idx&&r.channel===ch).reduce((a,b)=>a+b.orders,0);}),borderColor:C.ch[ch],backgroundColor:"transparent",borderWidth:2,tension:.4,pointRadius:0,borderDash:ch==="APP"?[5,3]:[]}));
+  mkChart("c-ordTrend",{type:"line",data:{labels:ml,datasets:ordDs},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11},boxWidth:10,boxHeight:10}},tooltip:{...tooltipStyle}},scales:{x:{...axBase,grid:{display:false}},y:{...axBase}}}});
+
+  // Basket size
+  const bsDs=chs.map(ch=>({label:ch,data:ml.map((_,i)=>{const idx=state.dr[0]+i;const rows=rawSales.filter(r=>r.month===idx&&r.channel===ch);const r=rows.reduce((a,b)=>a+b.revenue,0);const o=rows.reduce((a,b)=>a+b.orders,0);return o?Math.round(r/o):0;}),borderColor:C.ch[ch],backgroundColor:"transparent",borderWidth:2,tension:.4,pointRadius:0}));
+  mkChart("c-basket",{type:"line",data:{labels:ml,datasets:bsDs},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11},boxWidth:10,boxHeight:10}},tooltip:{...tooltipStyle,callbacks:{label:ctx=>" "+f$(ctx.raw)}}},scales:{x:{...axBase,grid:{display:false}},y:{...axBase,ticks:{...axBase.ticks,callback:v=>f$(v)}}}}});
+
+  // Journey matrix
+  const jTbl=document.getElementById("t-journey");
+  if(jTbl){
+    const thead=jTbl.querySelector("thead"),tbody=jTbl.querySelector("tbody");
+    thead.innerHTML=`<tr><th style="padding:5px 8px">First ↓ / Current →</th>${chs.map(ch=>`<th style="padding:5px 8px;color:${C.ch[ch]}">${ch}</th>`).join("")}</tr>`;
+    tbody.innerHTML=chs.map(first=>`<tr>
+      <td style="padding:5px 8px;font-weight:500;color:${C.ch[first]}">${first}</td>
+      ${chs.map(curr=>{const v=fc.filter(c=>c.firstChannel===first&&c.channel===curr).length;const same=first===curr;return`<td style="padding:5px 8px"><span class="mx-cell" style="background:${C.ch[curr]}${same?"44":"18"};color:${same?C.ch[curr]:"var(--text2)"}${same?";font-weight:600":""}">${v}</span></td>`;}).join("")}
+    </tr>`).join("");
+  }
+}
+
+// ── PAGE 4: BRAND & SKU ────────────────────────────────────────────────────────
+function renderBrand(){
+  buildSlicer("slicer-brand",true);
+  const fb=fBrand(),fsk=fSKU();
+  const totBRev=fb.reduce((a,b)=>a+b.revenue,0);
+  const avgGM=(fb.length?fb.reduce((a,b)=>a+b.gmroi,0)/fb.length:0).toFixed(2);
+  const dead=skuData.filter(s=>["Dead","Dead Risk"].includes(s.velocity)).length;
+  const avgDOH=Math.round(skuData.reduce((a,b)=>a+b.doh,0)/skuData.length);
+
+  kpiCards("kpi-brand",[
+    {label:"Brand Revenue",value:f$(totBRev),sub:"Filtered period"},
+    {label:"Avg GMROI",value:avgGM+"×",sub:"Gross margin ROI",color:C.green},
+    {label:"Dead/At-Risk SKUs",value:dead,sub:"Needs clearance",color:C.red},
+    {label:"Avg Days on Hand",value:avgDOH+"d",sub:"Across all SKUs",color:avgDOH>90?C.red:avgDOH>60?C.amber:C.teal},
+  ]);
+
+  // Brand revenue bar
+  const topB=fb.sort((a,b)=>b.revenue-a.revenue).slice(0,8);
+  mkChart("c-brandRev",{type:"bar",data:{labels:topB.map(b=>b.brand.split(" ")[0]),datasets:[{label:"Revenue",data:topB.map(b=>b.revenue),backgroundColor:C.blue,borderRadius:5,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{...tooltipStyle,callbacks:{label:ctx=>" "+f$(ctx.raw)}}},scales:{x:{...axBase,grid:{display:false}},y:{...axBase,ticks:{...axBase.ticks,callback:v=>f$(v)}}}}});
+
+  // Velocity dist
+  const vCls=["Fast","Normal","Slow","Dead Risk","Dead"];
+  const vData=vCls.map(v=>skuData.filter(s=>s.velocity===v).length);
+  mkChart("c-velDist",{type:"bar",data:{labels:vCls,datasets:[{label:"SKUs",data:vData,backgroundColor:vCls.map(v=>C.vel[v]),borderRadius:5,borderSkipped:false}]},
+    options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{...tooltipStyle}},scales:{x:{...axBase},y:{...axBase,grid:{display:false}}}}});
+
+  // GMROI bar
+  const gmBrands=fb.sort((a,b)=>b.gmroi-a.gmroi).slice(0,8);
+  mkChart("c-gmroi",{type:"bar",data:{labels:gmBrands.map(b=>b.brand.split(" ")[0]),datasets:[{label:"GMROI",data:gmBrands.map(b=>b.gmroi),backgroundColor:gmBrands.map(b=>b.gmroi>=2?C.green:b.gmroi>=1?C.amber:C.red),borderRadius:5,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{...tooltipStyle,callbacks:{label:ctx=>" "+ctx.raw+"×"}}},scales:{x:{...axBase,grid:{display:false}},y:{...axBase,ticks:{...axBase.ticks,callback:v=>v+"×"}}}}});
+
+  // SKU table
+  const tbody=document.querySelector("#t-sku tbody");
+  if(tbody){
+    tbody.innerHTML=fsk.sort((a,b)=>b.qtySold-a.qtySold).map((s,i)=>`<tr>
+      <td style="color:var(--text3)">${i+1}</td>
+      <td style="font-family:monospace;font-size:10px">${s.sku}</td>
+      <td>${s.brand}</td>
+      <td style="color:${s.doh>90?C.red:s.doh>60?C.amber:"var(--text)"};font-weight:${s.doh>90?600:400}">${s.doh}d</td>
+      <td>${fN(s.qtySold)}</td><td>${f$(s.revenue)}</td>
+      <td>${tag(s.velocity,C.vel[s.velocity])}</td>
+    </tr>`).join("");
+  }
+}
+
+// ── RENDER ALL ─────────────────────────────────────────────────────────────────
+function renderAll(){
+  if(state.page==="exec")    renderExec();
+  if(state.page==="loyalty") renderLoyalty();
+  if(state.page==="omni")    renderOmni();
+  if(state.page==="brand")   renderBrand();
+}
+
+window.showPage=function(id,btn){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("active"));
+  document.getElementById("page-"+id).classList.add("active");
+  btn.classList.add("active");
+  state.page=id;
+  renderAll();
+};
+
+// ── REFRESH ───────────────────────────────────────────────────────────────────
+window.doRefresh=function(){
+  const btn=document.getElementById("refreshBtn");
+  const lbl=document.getElementById("refreshLabel");
+  const badge=document.getElementById("statusBadge");
+  const ts=document.getElementById("lastRefresh");
+  btn.disabled=true;btn.classList.add("spinning");
+  lbl.textContent="Refreshing…";
+  badge.className="badge badge-refresh";badge.textContent="⟳ REFRESHING";
+  setTimeout(()=>{
+    btn.disabled=false;btn.classList.remove("spinning");
+    lbl.textContent="Refresh Data";
+    badge.className="badge badge-live";badge.textContent="● LIVE";
+    const now=new Date();
+    ts.textContent="Last refresh: "+now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+    renderAll();
+  },1800);
+};
+
+// ── DOWNLOAD ──────────────────────────────────────────────────────────────────
+window.downloadHTML=function(e){
+  e.preventDefault();
+  const html=document.documentElement.outerHTML;
+  const blob=new Blob([html],{type:"text/html"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="Enterprise_Analytics_SAP_B1.html";
+  a.click();
+};
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+document.getElementById("lastRefresh").textContent="Last refresh: "+new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+renderExec();
+</script>
+
+
+</body></html>
